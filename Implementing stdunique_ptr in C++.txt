@@ -1,0 +1,160 @@
+Implementing std::unique_ptr in C++
+std::unique_ptr is a smart pointer in C++ that enforces exclusive ownership of a dynamically allocated object. It ensures that only one std::unique_ptr can own the object at a time, preventing common memory management issues like memory leaks and dangling pointers.  
+
+Here's a breakdown of how to use and implement it:
+1. Core concepts
+Exclusive Ownership: A std::unique_ptr exclusively owns the object it manages. No other std::unique_ptr can simultaneously own the same object unless ownership is explicitly transferred.
+Automatic Memory Management: When a std::unique_ptr goes out of scope, it automatically deletes the managed object, releasing the associated memory. This adheres to the RAII (Resource Acquisition Is Initialization) principle.
+Non-Copyable, Moveable: std::unique_ptr cannot be copied, but its ownership can be transferred (moved) using std::move(). The original std::unique_ptr becomes null after a move operation.
+Custom Deleters: You can provide a custom deleter to specify how the managed object should be deallocated, notes StudyRaid and Learn Microsoft. 
+
+2. Using std::unique_ptr
+
+You can create a std::unique_ptr using either new or std::make_unique (preferred): 
+cpp
+#include <iostream>
+#include <memory> // for std::unique_ptr and std::make_unique
+
+class MyClass {
+public:
+    MyClass() { std::cout << "MyClass Constructor\n"; }
+    ~MyClass() { std::cout << "MyClass Destructor\n"; }
+    void greet() { std::cout << "Hello from MyClass!\n"; }
+};
+
+int main() {
+    // 1. Using std::make_unique (preferred for exception safety)
+    std::unique_ptr<MyClass> ptr1 = std::make_unique<MyClass>(); 
+    ptr1->greet(); // Accessing the managed object
+
+    // 2. Using 'new' (less preferred)
+    std::unique_ptr<MyClass> ptr2(new MyClass()); 
+    ptr2->greet(); 
+
+    // Transferring ownership (moving)
+    std::unique_ptr<MyClass> ptr3 = std::move(ptr1); // ptr1 is now null
+    ptr3->greet(); 
+    // ptr1->greet(); // This would cause an error as ptr1 no longer owns an object
+
+    // Resetting a unique_ptr
+    ptr3.reset(); // The object owned by ptr3 is now deleted
+    // ptr3->greet(); // This would cause an error
+
+    return 0; // Objects owned by ptr2 are automatically deleted here
+}
+Use code with caution.
+
+Output:
+MyClass Constructor
+Hello from MyClass!
+MyClass Constructor
+Hello from MyClass!
+Hello from MyClass!
+MyClass Destructor
+MyClass Destructor
+
+3. Implementing a custom unique_ptr
+To understand std::unique_ptr better, let's look at a simplified implementation: 
+cpp
+#include <iostream>
+
+template <typename T>
+class MyUniquePtr {
+private:
+    T* m_ptr;
+
+public:
+    // Constructor
+    explicit MyUniquePtr(T* ptr = nullptr) : m_ptr(ptr) {}
+
+    // Destructor
+    ~MyUniquePtr() {
+        delete m_ptr;
+    }
+
+    // Delete copy constructor and assignment operator to enforce exclusive ownership
+    MyUniquePtr(const MyUniquePtr&) = delete;
+    MyUniquePtr& operator=(const MyUniquePtr&) = delete;
+
+    // Move constructor
+    MyUniquePtr(MyUniquePtr&& other) noexcept : m_ptr(other.m_ptr) {
+        other.m_ptr = nullptr;
+    }
+
+    // Move assignment operator
+    MyUniquePtr& operator=(MyUniquePtr&& other) noexcept {
+        if (this != &other) {
+            delete m_ptr; // Delete the current resource
+            m_ptr = other.m_ptr; // Take ownership
+            other.m_ptr = nullptr; // Clear the other pointer
+        }
+        return *this;
+    }
+
+    // Dereference operator
+    T& operator*() const {
+        return *m_ptr;
+    }
+
+    // Arrow operator
+    T* operator->() const {
+        return m_ptr;
+    }
+
+    // Get raw pointer
+    T* get() const {
+        return m_ptr;
+    }
+
+    // Release ownership
+    T* release() noexcept {
+        T* temp = m_ptr;
+        m_ptr = nullptr;
+        return temp;
+    }
+
+    // Reset the managed object
+    void reset(T* ptr = nullptr) noexcept {
+        T* oldPtr = m_ptr;
+        m_ptr = ptr;
+        delete oldPtr;
+    }
+
+    // Check if the unique_ptr owns an object
+    explicit operator bool() const {
+        return m_ptr != nullptr;
+    }
+};
+
+int main() {
+    MyUniquePtr<MyClass> myPtr(new MyClass());
+    myPtr->greet();
+
+    MyUniquePtr<MyClass> movedPtr = std::move(myPtr); // Transfer ownership
+    movedPtr->greet(); 
+
+    // You can't use myPtr now, it's null
+    // if (myPtr) myPtr->greet(); // This would not execute
+
+    return 0;
+}
+Use code with caution.
+
+Output:
+MyClass Constructor
+Hello from MyClass!
+Hello from MyClass!
+MyClass Destructor
+In this implementation, you can see how the move constructor and move assignment operator handle the transfer of ownership. The copy constructor and assignment operators are explicitly deleted to enforce the exclusive ownership rule, according to Dev Genius and Learn Microsoft. 
+4. When to use unique_ptr
+Use std::unique_ptr when:
+You need exclusive ownership of a dynamically allocated object.
+You want automatic memory deallocation when the pointer goes out of scope.
+You want to avoid memory leaks and dangling pointers.
+You are passing ownership of a resource to another function or object. 
+5. Benefits of std::unique_ptr
+Memory Safety: Reduces the risk of memory leaks and other memory-related errors.
+Clarity of Ownership: Clearly indicates who owns the resource.
+Efficiency: No performance overhead compared to raw pointers (unless using custom deleters that require storage).
+Interoperability: Can be used with STL containers, algorithms, and C APIs. 
+AI responses may include mistakes. Learn more
