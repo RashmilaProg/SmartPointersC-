@@ -1,4 +1,5 @@
 Implementing shared_ptr in C++: A Simplified Overview
+https://www.geeksforgeeks.org/cpp/smart-pointers-cpp/
 https://www.geeksforgeeks.org/cpp/shared_ptr-in-cpp/
 
 By using shared_ptr, more than one pointer can point to same object at a time, and it will maintain a reference counter using the use_count() method.
